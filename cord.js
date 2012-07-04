@@ -1,9 +1,11 @@
+// https://github.com/robrobbins/Cord
+
 ;(function(BB) {
     var subscribe = function(subscriptions) {
         // we want to propagate the options object to all BB types
         this.options || (this.options = {});
         // normalize the input
-        if (!(subscriptions || (subscriptions = this.options.subscriptions))) return;
+        if (!(subscriptions || (subscriptions = this.options.subscriptions) || (subscriptions = this.subscriptions))) return;
         if (_.isFunction(subscriptions)) subscriptions = subscriptions.call(this);
         // handles for unsubscribing
         this.options.subscribed || (this.options.subscribed = []);
@@ -16,10 +18,9 @@
             this.options.subscribed.push($.subscribe(key, method));
         }
     };
-
     // attach to the Backbone types
-    BB.Model.prototype.subscribe = BB.Collection.prototype.subscribe =
-    Backbone.View.prototype.subscribe = subscribe;
+    BB.Model.prototype.subscribe = BB.Collection.prototype.subscribe = BB.View.prototype.subscribe = subscribe;
+
 
     var publish = function(topic, arg) {
         // normailize inputs :the topic or arg could be a func
@@ -29,10 +30,26 @@
         if(arg && !(_.isArray(arg))) arg = [arg];
         $.publish(topic, arg);
     };
-
     // attach to the Backbone types
-    BB.Model.prototype.publish = BB.Collection.prototype.publish =
-    Backbone.View.prototype.publish = publish;
+    BB.Model.prototype.publish = BB.Collection.prototype.publish = BB.View.prototype.publish = publish;
+
+    // Bulk deregistration - calling $.unsubscribe( handle ) for each subscription and nullify the subscribed array.
+	// Typically used when disposing of a view
+    var unsubscribeAll = function() {
+        var subs;
+        this.options || (this.options = {});
+        if(!(subs = this.options.subscribed)) return;
+
+        _.each(subs, function(sub) {
+            $.unsubscribe( sub );
+        });
+
+        // remove all from this objects subscriptions
+        this.options.subscribed = [];
+    };
+    // attach to the Backbone types
+    BB.Model.prototype.unsubscribeAll = BB.Collection.prototype.unsubscribeAll = BB.View.prototype.unsubscribeAll = unsubscribeAll;
+
 
     var unsubscribe = function(topic) {
         var subs;
@@ -48,9 +65,7 @@
         // remove it from this objects subscriptions
         this.options.subscribed = _.without(subs, handle);
     };
-
     // attach to the Backbone types
-    BB.Model.prototype.unsubscribe = BB.Collection.prototype.unsubscribe =
-    Backbone.View.prototype.unsubscribe = unsubscribe;
+    BB.Model.prototype.unsubscribe = BB.Collection.prototype.unsubscribe = BB.View.prototype.unsubscribe = unsubscribe;
 
 })(Backbone);
